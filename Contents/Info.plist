@@ -36,5 +36,10 @@
 	<array>
 		<string>VP6F</string>
 	</array>
+	<key>PlexSearchServices</key>
+	<dict>
+		<key>FunnyOrDie</key>
+		<string>com.plexapp.search.funnyordie</string>
+	</dict>
 </dict>
 </plist>
