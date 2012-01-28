@@ -1,16 +1,11 @@
-# PMS plugin framework
+import re
 
+TITLE = 'Funny or Die'
+ART = 'art-default.png'
+ICON = 'icon-default.png'
 
-####################################################################################################
-
-PLUGIN_PREFIX     = "/video/funnyordie"
-
-DEBUG                       = False
-
-FOD_ART = 'art-default.png'
-FOD_ICON = 'icon-default.png'
-
-URL_PATTERN = 'http://www.funnyordie.com/browse/videos/%s/all/%s/%s%s'
+URL_BASE = 'http://www.funnyordie.com'
+URL_PATTERN = 'http://www.funnyordie.com/browse/videos/%s/all/%s/%s/%s'
 
 CATEGORY_LIST = [
     { 'title': 'All', 'key': 'all' },
@@ -74,133 +69,115 @@ DATE_FILTERS = [
     },
 ]
 
-
-
 ####################################################################################################
 
 def Start():
-    Plugin.AddPrefixHandler(PLUGIN_PREFIX, Menu, "Funny or Die", FOD_ICON, FOD_ART)
-    Plugin.AddViewGroup("InfoList", viewMode="InfoList", mediaType="items")
-    Plugin.AddViewGroup("List", viewMode="List", mediaType="items")
-    MediaContainer.art = R(FOD_ART)
-    DirectoryItem.thumb = R(FOD_ICON)
+    Plugin.AddPrefixHandler('/video/funnyordie', Menu, TITLE, ICON, ART)
+    Plugin.AddViewGroup("InfoList", viewMode = "InfoList", mediaType = "items")
+    Plugin.AddViewGroup("List", viewMode = "List", mediaType = "items")
+
+    ObjectContainer.title1 = TITLE
+    ObjectContainer.art = R(ART)
+    ObjectContainer.view_group = 'List'
+
+    DirectoryObject.thumb = R(ICON)
+    DirectoryObject.art = R(ART)
+    VideoClipObject.thumb = R(ICON)
+
+####################################################################################################
 
 def Menu():
 
-    dir = MediaContainer(title1="Funny or Die",viewGroup="List")
-    for c in CATEGORY_LIST:
-        Log(c['key'])
-        dir.Append(Function(DirectoryItem(CategoryOptions,"%s" % c['title'],"%s" % c['title']),category=c['key']))
-    return dir
+    oc = ObjectContainer()
+    for category in CATEGORY_LIST:
+        oc.add(DirectoryObject(
+            key = Callback(CategoryOptions, title = category['title'], category = category['key']), 
+            title = category['title']))
 
-def CategoryOptions(sender,category=''):
-    dir = MediaContainer(title1=sender.title1,title2=sender.itemTitle,viewGroup="List")
+    return oc
 
-    for s in SORTS:
-        Log(category)
-        Log(s['key'])
-        if s['allow_date_filter']:
-            dir.Append(Function(DirectoryItem(DateOptions,"%s" % s['title'],"%s" % s['title']),category=category,s=s['key']))
+####################################################################################################
+
+def CategoryOptions(title, category):
+    oc = ObjectContainer(title2 = title)
+
+    for sort in SORTS:
+        if sort['allow_date_filter']:
+            oc.add(DirectoryObject(
+                key = Callback(
+                  DateOptions, 
+                  title = sort['title'], 
+                  category = category, 
+                  sort = sort['key']), 
+                title = sort['title']))
         else:
-            dir.Append(Function(DirectoryItem(VideoList,"%s" % s['title'],"%s" % s['title']),category=category,s=s['key'],date='all_time',page=1))
-    return dir
+            oc.add(DirectoryObject(
+                key = Callback(
+                    VideoList, 
+                    title = sort['title'], 
+                    category = category, 
+                    sort = sort['key'],
+                    date = 'all_time'), 
+                title = sort['title']))            
+    return oc
 
-def DateOptions(sender,category='',s=''):
-    dir = MediaContainer(title1=sender.title2,title2=sender.itemTitle,viewGroup="List")
+####################################################################################################
 
-    for d in DATE_FILTERS:
-        dir.Append(Function(DirectoryItem(VideoList,d['title'],d['title']),category=category,s=s,date=d['key'],page=1))
-    return dir
+def DateOptions(title, category, sort):
+    oc = ObjectContainer(title2 = title)
 
-def VideoList(sender,category='',s='',date='',page=1):
-    if page == 1:
-        t = sender.title2
-    else:
-        t = sender.title1
-    dir = MediaContainer(title1=t,title2="Page %s" % (page),viewGroup="InfoList")
-    url = makeUrl(category,s,date,page)
-    xml = HTML.ElementFromURL(url, cacheTime=360000, errors='replace')
-    for e in xml.xpath('//div[@class="detailed_vp"]'):
-        href = e.xpath('.//a')[0].get('href')
-        id = href.split('/')[2]
-        Log('id: ' + id)
-        vi = makeVideoItemFromId(id)
-        Log("appended: ")
-        Log(vi)
-        dir.Append(vi)
-                
+    for date_filter in DATE_FILTERS:
+        oc.add(DirectoryObject(
+            key = Callback(
+                VideoList, 
+                title = date_filter['title'], 
+                category = category, 
+                sort = sort,
+                date = date_filter['key']), 
+            title = date_filter['title']))  
+    return oc
 
+####################################################################################################
 
-    dir.Append(Function(DirectoryItem(VideoList,"Next Page...","Next Page..."),category=category,s=s,date=date,page=page+1))
+def VideoList(title, category, sort, date, page = 1):
+    oc = ObjectContainer(title2 = "%s: %s" % (title, str(page)), view_group = "InfoList")
 
-    return dir
+    videos = HTML.ElementFromURL(URL_PATTERN % (category, sort, date, page))
+    for video in videos.xpath('//div[@class="detailed_vp"]'):
 
-#######################
+        url = URL_BASE + video.xpath('.//a')[0].get('href')
+        title = video.xpath('.//a[@class = "title"]/text()')[0]
+        thumb = video.xpath('.//img[@class = "thumbnail"]')[0].get('src')
 
-def makeUrl(category,s,date_filter,page):
-    page_text = ''
-    if page>1:
-        page_text = '/page_%d' % page
-    cat_text = category
-    sort_text = s
-    date_text = date_filter
+        duration_text = video.xpath('.//span[@class = "duration"]/text()')[0]
+        duration_dict = re.match("(?P<mins>[0-9]+):(?P<secs>[0-9]+)", duration_text).groupdict()
+        mins = int(duration_dict['mins'])
+        secs = int(duration_dict['secs'])
+        duration = ((mins * 60) + secs) * 1000
 
-    return URL_PATTERN % (cat_text,sort_text,date_text,page_text)
+        oc.add(VideoClipObject(
+            url = url,
+            title = title,
+            thumb = Callback(GetThumb, url = thumb),
+            duration = duration))
 
-def makeVideoItemFromId(id):
+    oc.add(DirectoryObject(
+        key = Callback(
+            VideoList, 
+            title = title, 
+            category = category, 
+            sort = sort,
+            date = date,
+            page = page + 1), 
+        title = "Next Page..."))  
 
-    url = "http://www.funnyordie.com/player/%s" % id
-    xml = XML.ElementFromURL(url, cacheTime=360000, errors='replace')
-    n = {
-        'ns': 'http://xspf.org/ns/0/'
-    }
+    return oc
 
+####################################################################################################
+
+def GetThumb(url):
     try:
-        file = xml.xpath('//ns:location/text()',namespaces=n)[0]
+        data = HTTP.Request(url.replace('medium', 'large')).content
+        return DataObject(data, 'image/png')
     except:
-        Log('file')
-        Log(XML.StringFromElement(xml))
-        return None
-    try:
-        image = xml.xpath('//ns:image/text()',namespaces=n)[0]
-    except:
-        Log('image')
-        Log(XML.StringFromElement(xml))
-        return None
-    try:
-        title = xml.xpath('//ns:title/text()',namespaces=n)[0]
-    except:
-        Log('title')
-        Log(XML.StringFromElement(xml))
-        return None
-    try:
-        summary = xml.xpath('//ns:annotation/text()',namespaces=n)[0]
-    except:
-        Log('summary')
-        Log(XML.StringFromElement(xml))
-        return None
-
-    try:
-        duration = int(float(xml.xpath('//ns:meta[@rel="duration"]/text()',namespaces=n)[0]))*1000
-    except:
-        duration = 0
-
-    rating = 0
-    try:
-        rating = int(round(float(xml.xpath('//ns:percentage/text()',namespaces=n)[0])/10))
-    except Exception, e:
-        pass
-
-
-    vi = VideoItem(
-        file,
-        title=title,
-        subtitle='',
-        summary=summary,
-        thumb=image,
-        art=R(FOD_ART)
-    )
-    Log("vi:")
-    Log(vi)
-
-    return vi
+        return Redirect(url)
