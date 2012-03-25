@@ -26,8 +26,6 @@
 	<array>
 		<string>FLV</string>
 	</array>
-	<key>PlexPluginDebug</key>
-	<string>1</string>
 	<key>PlexClientPlatforms</key>
 	<string>*</string>
 	<key>PlexPluginMode</key>
