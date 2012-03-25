@@ -179,5 +179,11 @@ def GetThumb(url):
     try:
         data = HTTP.Request(url.replace('medium', 'large')).content
         return DataObject(data, 'image/png')
-    except:
-        return Redirect(url)
+    except: pass
+        
+    try:
+        data = HTTP.Request(url).content
+        return DataObject(data, 'image/png')
+    except: pass
+
+    return Redirect(R(ICON))
