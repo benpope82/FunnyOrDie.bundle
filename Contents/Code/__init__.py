@@ -1,7 +1,7 @@
 import re
 
 TITLE = 'Funny or Die'
-ART = 'art-default.png'
+ART = 'art-default.jpg'
 ICON = 'icon-default.png'
 
 URL_BASE = 'http://www.funnyordie.com'
