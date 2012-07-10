@@ -185,7 +185,7 @@ def VideoList(title, category, sort, date, page = 1):
 
 def GetThumb(url):
     try:
-        data = HTTP.Request(url.replace('medium', 'large')).content
+        data = HTTP.Request(url.replace('medium', 'fullsize')).content
         return DataObject(data, 'image/png')
     except: pass
         
