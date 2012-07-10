@@ -145,15 +145,23 @@ def VideoList(title, category, sort, date, page = 1):
     videos = HTML.ElementFromURL(URL_PATTERN % (category, sort, date, page))
     for video in videos.xpath('//div[@class="detailed_vp"]'):
 
+        # Filter out any videos which are not hosted, but are instead 'embedded'. I've only found
+        # one example of this, but didn't actually play online
         url = URL_BASE + video.xpath('.//a')[0].get('href')
+        if url.startswith('http://www.funnyordie.com/videos/') == False:
+            continue
+
         title = video.xpath('.//a[@class = "title"]/text()')[0]
         thumb = video.xpath('.//img[@class = "thumbnail"]')[0].get('src')
 
-        duration_text = video.xpath('.//span[@class = "duration"]/text()')[0]
-        duration_dict = re.match("(?P<mins>[0-9]+):(?P<secs>[0-9]+)", duration_text).groupdict()
-        mins = int(duration_dict['mins'])
-        secs = int(duration_dict['secs'])
-        duration = ((mins * 60) + secs) * 1000
+        try:
+            duration_text = video.xpath('.//span[@class = "duration"]/text()')[0]
+            duration_dict = re.match("(?P<mins>[0-9]+):(?P<secs>[0-9]+)", duration_text).groupdict()
+            mins = int(duration_dict['mins'])
+            secs = int(duration_dict['secs'])
+            duration = ((mins * 60) + secs) * 1000
+        except:
+            duration = 0
 
         oc.add(VideoClipObject(
             url = url,
