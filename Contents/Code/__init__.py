@@ -1,11 +1,10 @@
-import re
-
 TITLE = 'Funny or Die'
 ART = 'art-default.jpg'
 ICON = 'icon-default.png'
 
 URL_BASE = 'http://www.funnyordie.com'
 URL_PATTERN = 'http://www.funnyordie.com/browse/videos/%s/all/%s/%s/%s'
+RE_DURATION = Regex('(?P<mins>[0-9]+):(?P<secs>[0-9]+)')
 
 CATEGORY_LIST = [
     { 'title': 'All', 'key': 'all' },
@@ -156,7 +155,7 @@ def VideoList(title, category, sort, date, page = 1):
 
         try:
             duration_text = video.xpath('.//span[@class = "duration"]/text()')[0]
-            duration_dict = re.match("(?P<mins>[0-9]+):(?P<secs>[0-9]+)", duration_text).groupdict()
+            duration_dict = RE_DURATION.match(duration_text).groupdict()
             mins = int(duration_dict['mins'])
             secs = int(duration_dict['secs'])
             duration = ((mins * 60) + secs) * 1000

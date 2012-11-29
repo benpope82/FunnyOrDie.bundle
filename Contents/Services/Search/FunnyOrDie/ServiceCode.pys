@@ -1,17 +1,15 @@
-import re
-
 BASE_URL = 'http://www.funnyordie.com'
 SEARCH_URL = 'http://www.funnyordie.com/search/a/videos?q=%s'
+RE_DURATION = Regex('(?P<mins>[0-9]+):(?P<secs>[0-9]+)')
 
 ####################################################################################################
-
 def Search(query):
 
   # Compute the URL and download the HTML
   url = SEARCH_URL % String.Quote(query, usePlus = True)
   search_page = HTML.ElementFromURL(url)
   search_results = search_page.xpath("//div[contains(@class, 'search_results_box')]/div[contains(@class, 'video')]")
-   
+
   # Create a container to hold the results
   c = ObjectContainer()
   for item in search_results:  
@@ -27,7 +25,7 @@ def Search(query):
         url = BASE_URL + url
 
       duration_text = item.xpath(".//span[@class='duration']/text()")[0]
-      duration_dict = re.match("(?P<mins>[0-9]+):(?P<secs>[0-9]+)", duration_text).groupdict()
+      duration_dict = RE_DURATION.match(duration_text).groupdict()
       duration = (int(duration_dict['mins']) * 60 * 1000) + (int(duration_dict['secs']) * 1000)
 
       c.add(VideoClipObject(
@@ -40,5 +38,5 @@ def Search(query):
 
     except:
       Log.Exception("Exception adding video result")
-      
+
   return c
