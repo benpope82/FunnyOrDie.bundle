@@ -1,6 +1,4 @@
 TITLE = 'Funny or Die'
-ART = 'art-default.jpg'
-ICON = 'icon-default.png'
 
 URL_BASE = 'http://www.funnyordie.com'
 URL_PATTERN = 'http://www.funnyordie.com/browse/videos/%s/all/%s/%s/%s'
@@ -71,21 +69,15 @@ DATE_FILTERS = [
 ####################################################################################################
 
 def Start():
-    Plugin.AddPrefixHandler('/video/funnyordie', Menu, TITLE, ICON, ART)
     Plugin.AddViewGroup("InfoList", viewMode = "InfoList", mediaType = "items")
     Plugin.AddViewGroup("List", viewMode = "List", mediaType = "items")
 
     ObjectContainer.title1 = TITLE
-    ObjectContainer.art = R(ART)
-    ObjectContainer.view_group = 'List'
 
-    DirectoryObject.thumb = R(ICON)
-    DirectoryObject.art = R(ART)
-    VideoClipObject.thumb = R(ICON)
 
 ####################################################################################################
-
-def Menu():
+@handler('/video/funnyordie', 'Funny or Die')
+def MainMenu():
 
     oc = ObjectContainer()
     for category in CATEGORY_LIST:
