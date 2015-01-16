@@ -1,42 +1,28 @@
-BASE_URL = 'http://www.funnyordie.com'
+URL_BASE = 'http://www.funnyordie.com'
 SEARCH_URL = 'http://www.funnyordie.com/search/a/videos?q=%s'
-RE_DURATION = Regex('(?P<mins>[0-9]+):(?P<secs>[0-9]+)')
 
 ####################################################################################################
 def Search(query):
 
-  # Compute the URL and download the HTML
-  url = SEARCH_URL % String.Quote(query, usePlus = True)
-  search_page = HTML.ElementFromURL(url)
-  search_results = search_page.xpath("//div[contains(@class, 'search_results_box')]/div[contains(@class, 'video')]")
+    oc = ObjectContainer()
+    url = SEARCH_URL % String.Quote(query, usePlus=True)
+    search_page = HTML.ElementFromURL(url)
 
-  # Create a container to hold the results
-  c = ObjectContainer()
-  for item in search_results:  
-    try:
+    for video in search_page.xpath('//article[contains(@class, "video-preview")]'):
 
-      # Extract the details from the page
-      title = item.xpath(".//h2/a/text()")[0]
-      description = item.xpath(".//span[@class='description']/text()")[0].strip()
-      thumb = item.xpath(".//img[@class='thumbnail']")[0].get('src')
+        # Filter out any videos which are not hosted, but are instead 'embedded'. I've only found
+        # one example of this, but didn't actually play online
+        url = URL_BASE + video.xpath('./a/@href')[0]
+        if url.startswith('http://www.funnyordie.com/videos/') == False:
+            continue
 
-      url = item.xpath(".//h2/a")[0].get('href')
-      if url.startswith("http") == False:
-        url = BASE_URL + url
+        title = video.xpath('./a/@title')[0]
+        thumb = video.xpath('./a/img/@src')[0]
 
-      duration_text = item.xpath(".//span[@class='duration']/text()")[0]
-      duration_dict = RE_DURATION.match(duration_text).groupdict()
-      duration = (int(duration_dict['mins']) * 60 * 1000) + (int(duration_dict['secs']) * 1000)
+        oc.add(VideoClipObject(
+            url = url,
+            title = title,
+            thumb = Resource.ContentsOfURLWithFallback(url=thumb)
+        ))
 
-      c.add(VideoClipObject(
-        url = url,
-        title = title,
-        thumb = thumb,
-        summary = description,
-        duration = duration
-      ))
-
-    except:
-      Log.Exception("Exception adding video result")
-
-  return c
+    return oc

@@ -2,7 +2,6 @@ TITLE = 'Funny or Die'
 
 URL_BASE = 'http://www.funnyordie.com'
 URL_PATTERN = 'http://www.funnyordie.com/browse/videos/%s/all/%s/%s/%s'
-RE_DURATION = Regex('(?P<mins>[0-9]+):(?P<secs>[0-9]+)')
 
 CATEGORY_LIST = [
     { 'title': 'All', 'key': 'all' },
@@ -67,122 +66,111 @@ DATE_FILTERS = [
 ]
 
 ####################################################################################################
-
 def Start():
-    Plugin.AddViewGroup("InfoList", viewMode = "InfoList", mediaType = "items")
-    Plugin.AddViewGroup("List", viewMode = "List", mediaType = "items")
 
     ObjectContainer.title1 = TITLE
-
 
 ####################################################################################################
 @handler('/video/funnyordie', 'Funny or Die')
 def MainMenu():
 
     oc = ObjectContainer()
+
     for category in CATEGORY_LIST:
+
         oc.add(DirectoryObject(
-            key = Callback(CategoryOptions, title = category['title'], category = category['key']), 
-            title = category['title']))
+            key = Callback(CategoryOptions, title = category['title'], category = category['key']),
+            title = category['title']
+        ))
+
+    oc.add(SearchDirectoryObject(identifier='com.plexapp.plugins.funnyordie', title='Search', prompt='Search for Videos'))
 
     return oc
 
 ####################################################################################################
-
 def CategoryOptions(title, category):
+
     oc = ObjectContainer(title2 = title)
 
     for sort in SORTS:
+
         if sort['allow_date_filter']:
             oc.add(DirectoryObject(
                 key = Callback(
-                  DateOptions, 
-                  title = sort['title'], 
-                  category = category, 
-                  sort = sort['key']), 
-                title = sort['title']))
+                    DateOptions,
+                    title = sort['title'],
+                    category = category,
+                    sort = sort['key']
+                ),
+                title = sort['title']
+            ))
         else:
             oc.add(DirectoryObject(
                 key = Callback(
-                    VideoList, 
-                    title = sort['title'], 
-                    category = category, 
+                    VideoList,
+                    title = sort['title'],
+                    category = category,
                     sort = sort['key'],
-                    date = 'all_time'), 
-                title = sort['title']))            
+                    date = 'all_time'
+                ),
+                title = sort['title']
+            ))
+
     return oc
 
 ####################################################################################################
-
 def DateOptions(title, category, sort):
+
     oc = ObjectContainer(title2 = title)
 
     for date_filter in DATE_FILTERS:
+
         oc.add(DirectoryObject(
             key = Callback(
-                VideoList, 
-                title = date_filter['title'], 
-                category = category, 
+                VideoList,
+                title = date_filter['title'],
+                category = category,
                 sort = sort,
-                date = date_filter['key']), 
-            title = date_filter['title']))  
+                date = date_filter['key']
+            ),
+            title = date_filter['title']
+        ))
+
     return oc
 
 ####################################################################################################
-
 def VideoList(title, category, sort, date, page = 1):
-    oc = ObjectContainer(title2 = "%s: %s" % (title, str(page)), view_group = "InfoList")
 
+    oc = ObjectContainer(title2 = "%s: %s" % (title, str(page)))
     videos = HTML.ElementFromURL(URL_PATTERN % (category, sort, date, page))
-    for video in videos.xpath('//div[@class="detailed_vp"]'):
+
+    for video in videos.xpath('//article[contains(@class, "video-preview")]'):
 
         # Filter out any videos which are not hosted, but are instead 'embedded'. I've only found
         # one example of this, but didn't actually play online
-        url = URL_BASE + video.xpath('.//a')[0].get('href')
+        url = URL_BASE + video.xpath('./a/@href')[0]
         if url.startswith('http://www.funnyordie.com/videos/') == False:
             continue
 
-        title = video.xpath('.//a[@class = "title"]/text()')[0]
-        thumb = video.xpath('.//img[@class = "thumbnail"]')[0].get('src')
-
-        try:
-            duration_text = video.xpath('.//span[@class = "duration"]/text()')[0]
-            duration_dict = RE_DURATION.match(duration_text).groupdict()
-            mins = int(duration_dict['mins'])
-            secs = int(duration_dict['secs'])
-            duration = ((mins * 60) + secs) * 1000
-        except:
-            duration = 0
+        title = video.xpath('./a/@title')[0]
+        thumb = video.xpath('./a/img/@src')[0]
 
         oc.add(VideoClipObject(
             url = url,
             title = title,
-            thumb = Callback(GetThumb, url = thumb),
-            duration = duration))
+            thumb = Resource.ContentsOfURLWithFallback(url=thumb)
+        ))
 
-    oc.add(DirectoryObject(
+    oc.add(NextPageObject(
         key = Callback(
-            VideoList, 
-            title = title, 
-            category = category, 
+            VideoList,
+            title = title,
+            category = category,
             sort = sort,
             date = date,
-            page = page + 1), 
-        title = "Next Page..."))  
+            page = page + 1
+        ),
+        title = "Next Page..."
+    ))
 
     return oc
-
-####################################################################################################
-
-def GetThumb(url):
-    try:
-        data = HTTP.Request(url.replace('medium', 'fullsize')).content
-        return DataObject(data, 'image/png')
-    except: pass
-        
-    try:
-        data = HTTP.Request(url).content
-        return DataObject(data, 'image/png')
-    except: pass
-
-    return Redirect(R(ICON))
