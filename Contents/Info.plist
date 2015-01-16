@@ -4,21 +4,9 @@
 <dict>
 	<key>CFBundleIdentifier</key>
 	<string>com.plexapp.plugins.funnyordie</string>
-	<key>PlexAudioCodec</key>
-	<array>
-		<string>MP3</string>
-	</array>
 	<key>PlexClientPlatforms</key>
 	<string>*</string>
 	<key>PlexFrameworkVersion</key>
 	<string>2</string>
-	<key>PlexMediaContainer</key>
-	<array>
-		<string>FLV</string>
-	</array>
-	<key>PlexVideoCodec</key>
-	<array>
-		<string>VP6F</string>
-	</array>
 </dict>
 </plist>
