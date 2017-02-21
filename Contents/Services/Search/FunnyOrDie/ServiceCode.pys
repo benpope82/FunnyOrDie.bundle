@@ -1,26 +1,28 @@
-URL_BASE = 'http://www.funnyordie.com'
-SEARCH_URL = 'http://www.funnyordie.com/search/a/videos?q=%s'
+BASE_URL = 'https://www.funnyordie.com'
+SEARCH_URL = 'https://www.funnyordie.com/search_results/a/videos.json?page=1&sort=relevance&query=%s'
 
 ####################################################################################################
 def Search(query):
 
     oc = ObjectContainer()
-    url = SEARCH_URL % String.Quote(query, usePlus=True)
-    search_page = HTML.ElementFromURL(url)
+    url = SEARCH_URL % (String.Quote(query, usePlus=True))
+    json_obj = JSON.ObjectFromURL(url)
 
-    for video in search_page.xpath('//article[contains(@class, "video-preview")]'):
+    if not 'html' in json_obj:
+        return oc
 
-        # Filter out any videos which are not hosted, but are instead 'embedded'. I've only found
-        # one example of this, but didn't actually play online
-        url = URL_BASE + video.xpath('./a/@href')[0]
-        if url.startswith('http://www.funnyordie.com/videos/') == False:
+    for video in HTML.ElementFromString(json_obj['html']).xpath('//article[contains(@class, "video-preview")]'):
+
+        # Filter out any videos which are not hosted on FoD
+        url = video.xpath('./a/@href')[0]
+        if not url.startswith('/videos/'):
             continue
 
         title = video.xpath('./a/@title')[0]
-        thumb = video.xpath('./a/img/@src')[0]
+        thumb = video.xpath('./a/img/@data-src')[0]
 
         oc.add(VideoClipObject(
-            url = url,
+            url = BASE_URL + url,
             title = title,
             thumb = Resource.ContentsOfURLWithFallback(url=thumb)
         ))
