@@ -19,11 +19,13 @@ def Search(query):
             continue
 
         title = video.xpath('./a/@title')[0]
+        summary = video.xpath('.//small[@itemprop="headline"]/text()')
         thumb = video.xpath('./a/img/@data-src')[0]
 
         oc.add(VideoClipObject(
             url = BASE_URL + url,
             title = title,
+            summary = summary[0] if len(summary) > 0 else None,
             thumb = Resource.ContentsOfURLWithFallback(url=thumb)
         ))
 
